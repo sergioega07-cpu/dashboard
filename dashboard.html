@@ -562,7 +562,6 @@
       }
     }
 
-    // Refresco automático cada 3 minutos para la TV
     setInterval(() => {
       if (currentUserAccount) {
         syncMicrosoftGraphEvents();
@@ -744,7 +743,6 @@
       const startDate = formatToISO(rawStartDate);
       const endDate = rawEndDate ? formatToISO(rawEndDate) : startDate;
 
-      // Si la cuenta está conectada a Microsoft 365, guardar directamente en la nube
       if (currentUserAccount) {
         const token = await getAccessToken();
         if (token) {
@@ -770,26 +768,26 @@
           };
 
           try {
-            await fetch("https://graph.microsoft.com/v1.0/me/events", {
+            const res = await fetch("https://graph.microsoft.com/v1.0/me/events", {
               method: "POST",
               headers: {
                 Authorization: `Bearer ${token}`,
-                "Content-Type": "json"
+                "Content-Type": "application/json"
               },
               body: JSON.stringify(eventPayload)
             });
 
-            // Volver a consultar Microsoft Graph para refrescar
-            await syncMicrosoftGraphEvents();
-            closeModal();
-            return;
+            if (res.ok) {
+              await syncMicrosoftGraphEvents();
+              closeModal();
+              return;
+            }
           } catch (err) {
-            console.error("Error al crear evento en Microsoft Teams:", err);
+            console.error("Error al crear evento en MS Graph:", err);
           }
         }
       }
 
-      // Guardado local de respaldo si no hay cuenta conectada
       let storedRaw = localStorage.getItem('cectap_events');
       let storedList = storedRaw ? JSON.parse(storedRaw) : [];
 
@@ -820,7 +818,6 @@
 
       const props = selectedEventObj.extendedProps || {};
 
-      // Eliminar de Microsoft Teams si es un evento sincronizado
       if (currentUserAccount && props.isMicrosoft && props.rawMsId) {
         const token = await getAccessToken();
         if (token) {
@@ -838,7 +835,6 @@
         }
       }
 
-      // Eliminar de memoria local
       let storedRaw = localStorage.getItem('cectap_events');
       let storedList = storedRaw ? JSON.parse(storedRaw) : [];
       
