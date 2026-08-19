@@ -121,12 +121,12 @@
       text-shadow: 0 2px 4px rgba(0,0,0,0.9);
       font-weight: 700;
     }
+
+    /* Ocultar el título repetido del mes arriba a la izquierda */
     .fc-toolbar-title {
-      font-size: 1.5rem !important;
-      font-weight: 700;
-      text-shadow: 0 2px 6px rgba(0,0,0,0.9);
-      color: #ffffff;
+      display: none !important;
     }
+
     .fc-button-primary {
       background-color: rgba(15, 23, 42, 0.6) !important;
       border: 1px solid rgba(255, 255, 255, 0.4) !important;
@@ -357,7 +357,7 @@
 
   <script>
     let calendar;
-    let editingEventId = null;
+    let selectedEventObj = null;
 
     function updateClock() {
       const now = new Date();
@@ -380,7 +380,7 @@
         initialView: 'dayGridMonth',
         locale: 'es',
         headerToolbar: {
-          left: 'title prev,next today',
+          left: 'prev,next today',
           center: '',
           right: ''
         },
@@ -443,7 +443,7 @@
     }
 
     function openModalForCreate(dateStr) {
-      editingEventId = null;
+      selectedEventObj = null;
       document.getElementById('modalHeader').innerText = 'Nueva Actividad CECTAP';
       document.getElementById('btnDeleteEvent').style.display = 'none';
 
@@ -458,14 +458,17 @@
     }
 
     function openModalForEdit(fcEvent) {
-      editingEventId = fcEvent.id;
+      selectedEventObj = fcEvent;
       document.getElementById('modalHeader').innerText = 'Editar Actividad CECTAP';
       document.getElementById('btnDeleteEvent').style.display = 'block';
 
       const props = fcEvent.extendedProps || {};
+      const startDateStr = fcEvent.startStr ? fcEvent.startStr.split('T')[0] : '';
+      const endDateStr = fcEvent.endStr ? fcEvent.endStr.split('T')[0] : startDateStr;
+
       document.getElementById('eventTitle').value = fcEvent.title || '';
-      document.getElementById('eventStartDate').value = props.startDate || fcEvent.startStr.split('T')[0];
-      document.getElementById('eventEndDate').value = props.endDate || (fcEvent.endStr ? fcEvent.endStr.split('T')[0] : props.startDate);
+      document.getElementById('eventStartDate').value = props.startDate || startDateStr;
+      document.getElementById('eventEndDate').value = props.endDate || endDateStr;
       document.getElementById('eventStartTime').value = props.startTime || '';
       document.getElementById('eventEndTime').value = props.endTime || '';
       document.getElementById('eventDesc').value = props.description || '';
@@ -475,12 +478,13 @@
 
     function closeModal() {
       document.getElementById('eventModal').style.display = 'none';
+      selectedEventObj = null;
     }
 
     function saveEvent() {
-      const title = document.getElementById('eventTitle').value;
+      const title = document.getElementById('eventTitle').value.trim();
       const startDate = document.getElementById('eventStartDate').value;
-      const endDate = document.getElementById('eventEndDate').value || startDate;
+      let endDate = document.getElementById('eventEndDate').value;
       const startTime = document.getElementById('eventStartTime').value;
       const endTime = document.getElementById('eventEndTime').value;
       const desc = document.getElementById('eventDesc').value;
@@ -490,44 +494,44 @@
         return;
       }
 
+      if (!endDate) {
+        endDate = startDate;
+      }
+
       let startISO = startDate;
-      if (startTime) startISO += 'T' + startTime;
+      if (startTime) {
+        startISO += 'T' + startTime + ':00';
+      }
 
       let endISO = endDate;
-      if (endTime) endISO += 'T' + endTime;
+      if (endTime) {
+        endISO += 'T' + endTime + ':00';
+      }
 
       let events = getStoredEvents();
 
-      if (editingEventId) {
-        events = events.map(ev => {
-          if (ev.id === editingEventId) {
-            return {
-              id: editingEventId,
-              title: title,
-              start: startISO,
-              end: endISO,
-              startDate: startDate,
-              endDate: endDate,
-              startTime: startTime,
-              endTime: endTime,
-              description: desc
-            };
-          }
-          return ev;
-        });
-      } else {
-        events.push({
-          id: Date.now().toString(),
-          title: title,
-          start: startISO,
-          end: endISO,
-          startDate: startDate,
-          endDate: endDate,
-          startTime: startTime,
-          endTime: endTime,
-          description: desc
+      if (selectedEventObj) {
+        const targetId = selectedEventObj.id;
+        const targetTitle = selectedEventObj.title;
+
+        events = events.filter(ev => {
+          if (targetId && ev.id === targetId) return false;
+          if (!targetId && ev.title === targetTitle) return false;
+          return true;
         });
       }
+
+      events.push({
+        id: selectedEventObj && selectedEventObj.id ? selectedEventObj.id : Date.now().toString(),
+        title: title,
+        start: startISO,
+        end: endISO,
+        startDate: startDate,
+        endDate: endDate,
+        startTime: startTime,
+        endTime: endTime,
+        description: desc
+      });
 
       localStorage.setItem('cectap_events', JSON.stringify(events));
       closeModal();
@@ -535,15 +539,21 @@
     }
 
     function deleteEvent() {
-      if (!editingEventId) return;
+      if (!selectedEventObj) return;
 
-      if (confirm('¿Está seguro de que desea borrar esta actividad?')) {
-        let events = getStoredEvents();
-        events = events.filter(ev => ev.id !== editingEventId);
-        localStorage.setItem('cectap_events', JSON.stringify(events));
-        closeModal();
-        calendar.refetchEvents();
-      }
+      let events = getStoredEvents();
+      const targetId = selectedEventObj.id;
+      const targetTitle = selectedEventObj.title;
+
+      events = events.filter(ev => {
+        if (targetId && ev.id === targetId) return false;
+        if (targetTitle && ev.title === targetTitle) return false;
+        return true;
+      });
+
+      localStorage.setItem('cectap_events', JSON.stringify(events));
+      closeModal();
+      calendar.refetchEvents();
     }
   </script>
 </body>
