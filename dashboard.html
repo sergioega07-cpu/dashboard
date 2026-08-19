@@ -29,14 +29,14 @@
       background-color: #0f172a;
     }
 
-    /* Imagen de Fondo Mosaico con Superposición */
+    /* Imagen de Fondo Mosaico desde GitHub Pages */
     .bg-background {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background-image: url('/sites/CECTAP2026/Shared%20Documents/Dashboard_CECTAP/mosaico.jpeg');
+      background-image: url('mosaico.jpeg');
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -49,7 +49,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(15, 23, 42, 0.65); /* Oscurecido suave para dar visibilidad al texto */
+      background: rgba(15, 23, 42, 0.65);
       z-index: -1;
     }
 
@@ -114,7 +114,6 @@
       height: 100%;
     }
 
-    /* Personalización FullCalendar */
     .fc {
       color: #f8fafc;
     }
@@ -150,7 +149,6 @@
       font-size: 0.85rem;
     }
 
-    /* Selectores Personalizados */
     .custom-selectors {
       display: inline-flex;
       gap: 8px;
@@ -299,7 +297,7 @@
 
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button id="btnSaveEvent" class="btn btn-primary" onclick="saveEvent()">Guardar en Teams</button>
+        <button id="btnSaveEvent" class="btn btn-primary" onclick="saveEvent()">Guardar Actividad</button>
       </div>
     </div>
   </div>
@@ -317,7 +315,13 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Inicialización de FullCalendar + API SharePoint
+    // Cargar eventos guardados de localStorage
+    function getStoredEvents() {
+      const stored = localStorage.getItem('cectap_events');
+      return stored ? JSON.parse(stored) : [];
+    }
+
+    // Inicialización de FullCalendar
     document.addEventListener('DOMContentLoaded', function() {
       const calendarEl = document.getElementById('calendar');
 
@@ -330,28 +334,7 @@
           right: ''
         },
         events: function(fetchInfo, successCallback, failureCallback) {
-          const siteUrl = "/sites/CECTAP2026/_api/web/lists/getbytitle('Eventos Dashboard')/items?$select=Title,FechaInicio,Descripcion";
-
-          fetch(siteUrl, {
-            headers: { "Accept": "application/json;odata=verbose" }
-          })
-          .then(response => response.json())
-          .then(data => {
-            if (data.d && data.d.results) {
-              const events = data.d.results.map(item => ({
-                title: item.Title,
-                start: item.FechaInicio,
-                description: item.Descripcion
-              }));
-              successCallback(events);
-            } else {
-              successCallback([]);
-            }
-          })
-          .catch(error => {
-            console.error('Error cargando eventos:', error);
-            successCallback([]);
-          });
+          successCallback(getStoredEvents());
         },
         dateClick: function(info) {
           openModal(info.dateStr);
@@ -418,55 +401,28 @@
       document.getElementById('eventModal').style.display = 'none';
     }
 
-    // Guardar Evento en SharePoint
-    async function saveEvent() {
+    // Guardar Evento Localmente
+    function saveEvent() {
       const title = document.getElementById('eventTitle').value;
       const date = document.getElementById('eventDate').value;
       const desc = document.getElementById('eventDesc').value;
-      const btnSave = document.getElementById('btnSaveEvent');
 
       if (!title) {
         alert('Por favor ingrese un título para la actividad');
         return;
       }
 
-      btnSave.disabled = true;
-      btnSave.innerText = 'Guardando...';
+      const events = getStoredEvents();
+      events.push({
+        title: title,
+        start: date,
+        description: desc
+      });
 
-      const sharepointApiUrl = "/sites/CECTAP2026/_api/web/lists/getbytitle('Eventos Dashboard')/items";
+      localStorage.setItem('cectap_events', JSON.stringify(events));
 
-      const payload = {
-        "__metadata": { "type": "SP.Data.Eventos_x0020_DashboardListItem" },
-        "Title": title,
-        "FechaInicio": date + "T09:00:00Z",
-        "Descripcion": desc
-      };
-
-      try {
-        const response = await fetch(sharepointApiUrl, {
-          method: 'POST',
-          headers: {
-            'Accept': 'application/json;odata=verbose',
-            'Content-Type': 'application/json;odata=verbose',
-            'X-RequestDigest': document.getElementById('__REQUESTDIGEST') ? document.getElementById('__REQUESTDIGEST').value : ''
-          },
-          body: JSON.stringify(payload)
-        });
-
-        if (response.ok || response.status === 201) {
-          alert('Actividad guardada exitosamente en SharePoint/Teams');
-        } else {
-          alert('Actividad registrada correctamente');
-        }
-      } catch (error) {
-        console.error('Error en guardado:', error);
-        alert('Actividad registrada correctamente');
-      } finally {
-        closeModal();
-        calendar.refetchEvents();
-        btnSave.disabled = false;
-        btnSave.innerText = 'Guardar en Teams';
-      }
+      closeModal();
+      calendar.refetchEvents();
     }
   </script>
 </body>
