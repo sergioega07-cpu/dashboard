@@ -122,7 +122,6 @@
       font-weight: 700;
     }
 
-    /* Ocultar el título repetido del mes arriba a la izquierda */
     .fc-toolbar-title {
       display: none !important;
     }
@@ -370,7 +369,13 @@
 
     function getStoredEvents() {
       const stored = localStorage.getItem('cectap_events');
-      return stored ? JSON.parse(stored) : [];
+      if (!stored) return [];
+      try {
+        const parsed = JSON.parse(stored);
+        return parsed.filter(ev => ev && ev.title && ev.start);
+      } catch (e) {
+        return [];
+      }
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -494,18 +499,20 @@
         return;
       }
 
-      if (!endDate) {
-        endDate = startDate;
-      }
-
+      let isAllDay = true;
       let startISO = startDate;
+      let endISO = null;
+
       if (startTime) {
-        startISO += 'T' + startTime + ':00';
+        startISO = startDate + 'T' + startTime + ':00';
+        isAllDay = false;
       }
 
-      let endISO = endDate;
-      if (endTime) {
-        endISO += 'T' + endTime + ':00';
+      if (endTime && endDate) {
+        endISO = endDate + 'T' + endTime + ':00';
+        isAllDay = false;
+      } else if (endDate && endDate !== startDate) {
+        endISO = endDate;
       }
 
       let events = getStoredEvents();
@@ -516,22 +523,28 @@
 
         events = events.filter(ev => {
           if (targetId && ev.id === targetId) return false;
-          if (!targetId && ev.title === targetTitle) return false;
+          if (targetTitle && ev.title === targetTitle) return false;
           return true;
         });
       }
 
-      events.push({
+      const newEvent = {
         id: selectedEventObj && selectedEventObj.id ? selectedEventObj.id : Date.now().toString(),
         title: title,
         start: startISO,
-        end: endISO,
+        allDay: isAllDay,
         startDate: startDate,
-        endDate: endDate,
+        endDate: endDate || startDate,
         startTime: startTime,
         endTime: endTime,
         description: desc
-      });
+      };
+
+      if (endISO) {
+        newEvent.end = endISO;
+      }
+
+      events.push(newEvent);
 
       localStorage.setItem('cectap_events', JSON.stringify(events));
       closeModal();
