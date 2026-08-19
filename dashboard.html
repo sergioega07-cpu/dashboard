@@ -21,13 +21,16 @@
       font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
     }
 
+    html, body {
+      height: 100vh;
+      overflow: hidden;
+    }
+
     body {
       color: #ffffff;
-      min-height: 100vh;
       display: flex;
       flex-direction: column;
-      padding: 15px;
-      overflow: hidden;
+      padding: 12px;
       position: relative;
       background-color: #0f172a;
     }
@@ -61,10 +64,11 @@
       align-items: center;
       background: rgba(15, 23, 42, 0.4);
       border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 16px;
-      padding: 12px 24px;
-      margin-bottom: 15px;
+      border-radius: 12px;
+      padding: 8px 18px;
+      margin-bottom: 10px;
       box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+      flex-shrink: 0;
     }
 
     .top-bar-center {
@@ -76,11 +80,11 @@
     .weather-widget {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-size: 0.95rem;
+      gap: 10px;
+      font-size: 0.85rem;
       background: rgba(0, 0, 0, 0.4);
-      padding: 8px 16px;
-      border-radius: 12px;
+      padding: 6px 12px;
+      border-radius: 10px;
       text-shadow: 0 2px 4px rgba(0,0,0,0.9);
     }
 
@@ -89,7 +93,7 @@
     }
 
     .clock-time {
-      font-size: 1.8rem;
+      font-size: 1.5rem;
       font-weight: 700;
       letter-spacing: 1px;
       color: #ffffff;
@@ -97,7 +101,7 @@
     }
 
     .clock-date {
-      font-size: 0.85rem;
+      font-size: 0.75rem;
       color: #f1f5f9;
       text-transform: capitalize;
       text-shadow: 0 2px 4px rgba(0,0,0,0.9);
@@ -107,20 +111,22 @@
       flex: 1;
       background: rgba(15, 23, 42, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 20px;
-      padding: 20px;
+      border-radius: 16px;
+      padding: 10px;
       display: flex;
       flex-direction: column;
       box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+      min-height: 0; /* Permite al contenedor encogerse dinámicamente */
     }
 
     #calendar {
-      flex: 1;
+      width: 100%;
       height: 100%;
     }
 
     .fc {
       color: #ffffff;
+      height: 100% !important;
     }
     .fc-theme-standard td, .fc-theme-standard th {
       border-color: rgba(255, 255, 255, 0.25);
@@ -130,10 +136,15 @@
       background: rgba(15, 23, 42, 0.5);
       text-shadow: 0 2px 4px rgba(0,0,0,0.9);
       font-weight: 700;
+      padding: 4px 0 !important;
     }
 
     .fc-toolbar-title {
       display: none !important;
+    }
+
+    .fc-toolbar {
+      margin-bottom: 8px !important;
     }
 
     .fc-button-primary {
@@ -143,6 +154,7 @@
       border-radius: 8px !important;
       transition: all 0.2s;
       text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      padding: 4px 10px !important;
     }
     .fc-button-primary:hover {
       background-color: rgba(15, 23, 42, 0.85) !important;
@@ -158,6 +170,7 @@
       text-shadow: 0 2px 4px rgba(0,0,0,0.9);
       font-weight: 700;
       color: #ffffff;
+      padding: 2px 6px !important;
     }
 
     .fc-event {
@@ -165,9 +178,9 @@
       border: 1px solid rgba(59, 130, 246, 0.8) !important;
       color: #ffffff !important;
       font-weight: 600 !important;
-      border-radius: 6px !important;
-      padding: 4px 8px !important;
-      font-size: 0.85rem !important;
+      border-radius: 5px !important;
+      padding: 2px 6px !important;
+      font-size: 0.8rem !important;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
       cursor: pointer;
       white-space: nowrap !important;
@@ -189,11 +202,12 @@
       background: rgba(15, 23, 42, 0.8);
       color: white;
       border: 1px solid rgba(255, 255, 255, 0.4);
-      padding: 6px 12px;
+      padding: 4px 10px;
       border-radius: 8px;
       outline: none;
       cursor: pointer;
       text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+      font-size: 0.85rem;
     }
 
     .modal-overlay {
@@ -296,26 +310,26 @@
       background: rgba(37, 99, 235, 0.8);
       border: 1px solid rgba(255, 255, 255, 0.4);
       color: white;
-      padding: 8px 14px;
-      border-radius: 10px;
+      padding: 6px 12px;
+      border-radius: 8px;
       font-size: 0.85rem;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .btn-fs {
       background: rgba(255, 255, 255, 0.15);
       border: 1px solid rgba(255, 255, 255, 0.3);
       color: white;
-      padding: 8px 14px;
-      border-radius: 10px;
+      padding: 6px 12px;
+      border-radius: 8px;
       font-size: 0.85rem;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
     }
 
     .btn:hover, .btn-ms:hover, .btn-fs:hover {
@@ -333,7 +347,7 @@
       <span id="weatherIcon">☀️</span>
       <div>
         <div id="weatherTemp" style="font-weight: 600;">18°C</div>
-        <div id="weatherDesc" style="font-size: 0.75rem; color: #cbd5e1;">Santiago</div>
+        <div id="weatherDesc" style="font-size: 0.7rem; color: #cbd5e1;">Santiago</div>
       </div>
     </div>
 
@@ -446,7 +460,6 @@
       return dateString;
     }
 
-    // Función para activar / desactivar pantalla completa
     function toggleFullscreen() {
       const doc = document.documentElement;
       if (!document.fullscreenElement && !document.webkitFullscreenElement) {
@@ -468,6 +481,7 @@
         }
         document.getElementById('fsText').innerText = "Pantalla Completa";
       }
+      setTimeout(() => { if(calendar) calendar.updateSize(); }, 300);
     }
 
     // Inicializar autenticación Microsoft
@@ -604,6 +618,8 @@
       calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'es',
+        height: '100%',
+        expandRows: true,
         headerToolbar: {
           left: 'prev,next today',
           center: '',
