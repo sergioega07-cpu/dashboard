@@ -747,8 +747,18 @@
         const token = await getAccessToken();
         if (token) {
           const isAllDay = !startTime;
-          const startDateTime = isAllDay ? `${startDate}T00:00:00` : `${startDate}T${startTime}:00`;
-          const endDateTime = isAllDay ? `${endDate}T23:59:00` : `${endDate}T${endTime || startTime}:00`;
+          
+          let startDateTime, endDateTime;
+          if (isAllDay) {
+            startDateTime = `${startDate}T00:00:00`;
+            const endD = new Date(endDate);
+            endD.setDate(endD.getDate() + 1);
+            endDateTime = `${endD.toISOString().split('T')[0]}T00:00:00`;
+          } else {
+            startDateTime = `${startDate}T${startTime}:00`;
+            const endT = endTime || startTime;
+            endDateTime = `${endDate}T${endT}:00`;
+          }
 
           const eventPayload = {
             subject: title,
@@ -771,7 +781,7 @@
             const res = await fetch("https://graph.microsoft.com/v1.0/me/events", {
               method: "POST",
               headers: {
-                Authorization: `Bearer ${token}`,
+                "Authorization": `Bearer ${token}`,
                 "Content-Type": "application/json"
               },
               body: JSON.stringify(eventPayload)
@@ -781,13 +791,18 @@
               await syncMicrosoftGraphEvents();
               closeModal();
               return;
+            } else {
+              const errData = await res.json();
+              alert("Microsoft no pudo guardar el evento: " + (errData.error ? errData.error.message : res.statusText));
             }
           } catch (err) {
-            console.error("Error al crear evento en MS Graph:", err);
+            console.error("Error de red al crear evento en MS Graph:", err);
+            alert("Error de conexión al intentar guardar en Microsoft Teams.");
           }
         }
       }
 
+      // Guardado local si no hay sesión iniciada
       let storedRaw = localStorage.getItem('cectap_events');
       let storedList = storedRaw ? JSON.parse(storedRaw) : [];
 
@@ -822,15 +837,20 @@
         const token = await getAccessToken();
         if (token) {
           try {
-            await fetch(`https://graph.microsoft.com/v1.0/me/events/${props.rawMsId}`, {
+            const res = await fetch(`https://graph.microsoft.com/v1.0/me/events/${props.rawMsId}`, {
               method: "DELETE",
               headers: { Authorization: `Bearer ${token}` }
             });
-            await syncMicrosoftGraphEvents();
-            closeModal();
-            return;
+
+            if (res.ok || res.status === 204) {
+              await syncMicrosoftGraphEvents();
+              closeModal();
+              return;
+            } else {
+              alert("No se pudo borrar el evento de Microsoft Teams.");
+            }
           } catch (err) {
-            console.error("Error al eliminar evento en MS Graph:", err);
+            console.error("Error al borrar evento en MS Graph:", err);
           }
         }
       }
