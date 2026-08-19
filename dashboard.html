@@ -486,33 +486,36 @@
       selectedEventObj = null;
     }
 
+    function formatToISO(dateString) {
+      if (!dateString) return '';
+      if (dateString.includes('-')) {
+        const parts = dateString.split('-');
+        if (parts[0].length === 2 && parts[2].length === 4) {
+          return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+      }
+      return dateString;
+    }
+
     function saveEvent() {
       const title = document.getElementById('eventTitle').value.trim();
-      const startDate = document.getElementById('eventStartDate').value;
-      let endDate = document.getElementById('eventEndDate').value;
+      const rawStartDate = document.getElementById('eventStartDate').value;
+      let rawEndDate = document.getElementById('eventEndDate').value;
       const startTime = document.getElementById('eventStartTime').value;
       const endTime = document.getElementById('eventEndTime').value;
       const desc = document.getElementById('eventDesc').value;
 
-      if (!title || !startDate) {
+      if (!title || !rawStartDate) {
         alert('Por favor ingrese al menos el título y la fecha de inicio.');
         return;
       }
 
-      let isAllDay = true;
+      const startDate = formatToISO(rawStartDate);
+      const endDate = rawEndDate ? formatToISO(rawEndDate) : startDate;
+
       let startISO = startDate;
-      let endISO = null;
-
       if (startTime) {
-        startISO = startDate + 'T' + startTime + ':00';
-        isAllDay = false;
-      }
-
-      if (endTime && endDate) {
-        endISO = endDate + 'T' + endTime + ':00';
-        isAllDay = false;
-      } else if (endDate && endDate !== startDate) {
-        endISO = endDate;
+        startISO += 'T' + startTime + ':00';
       }
 
       let events = getStoredEvents();
@@ -532,16 +535,15 @@
         id: selectedEventObj && selectedEventObj.id ? selectedEventObj.id : Date.now().toString(),
         title: title,
         start: startISO,
-        allDay: isAllDay,
         startDate: startDate,
-        endDate: endDate || startDate,
+        endDate: endDate,
         startTime: startTime,
         endTime: endTime,
         description: desc
       };
 
-      if (endISO) {
-        newEvent.end = endISO;
+      if (endTime && endDate) {
+        newEvent.end = endDate + 'T' + endTime + ':00';
       }
 
       events.push(newEvent);
