@@ -116,7 +116,7 @@
       display: flex;
       flex-direction: column;
       box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-      min-height: 0; /* Permite al contenedor encogerse dinámicamente */
+      min-height: 0;
     }
 
     #calendar {
@@ -417,7 +417,6 @@
   </div>
 
   <script>
-    // Configuración Microsoft Authentication Library (MSAL)
     const msalConfig = {
       auth: {
         clientId: "bc9f2a64-1ced-41c0-9873-bf4661b43fd9",
@@ -484,7 +483,6 @@
       setTimeout(() => { if(calendar) calendar.updateSize(); }, 300);
     }
 
-    // Inicializar autenticación Microsoft
     async function initMicrosoftAuth() {
       try {
         const accounts = msalInstance.getAllAccounts();
@@ -503,6 +501,7 @@
         await msalInstance.logoutPopup();
         currentUserAccount = null;
         document.getElementById('msAuthText').innerText = "Conectar Teams / 365";
+        localStorage.removeItem('cectap_events');
         refreshCalendarEvents();
       } else {
         try {
@@ -542,6 +541,7 @@
         if (data.value) {
           const msEvents = data.value.map(ev => ({
             id: 'ms_' + ev.id,
+            rawMsId: ev.id,
             title: ev.subject,
             startDate: ev.start.dateTime.split('T')[0],
             endDate: ev.end.dateTime.split('T')[0],
@@ -561,6 +561,13 @@
         console.error("Error al obtener eventos de MS Graph:", err);
       }
     }
+
+    // Refresco automático cada 3 minutos para la TV
+    setInterval(() => {
+      if (currentUserAccount) {
+        syncMicrosoftGraphEvents();
+      }
+    }, 180000);
 
     function getStoredEvents() {
       const stored = localStorage.getItem('cectap_events');
@@ -590,7 +597,8 @@
               startTime: ev.startTime || '',
               endTime: ev.endTime || '',
               description: ev.description || '',
-              isMicrosoft: ev.isMicrosoft || false
+              isMicrosoft: ev.isMicrosoft || false,
+              rawMsId: ev.rawMsId || ''
             }
           };
 
@@ -720,7 +728,7 @@
       selectedEventObj = null;
     }
 
-    function saveEvent() {
+    async function saveEvent() {
       const title = document.getElementById('eventTitle').value.trim();
       const rawStartDate = document.getElementById('eventStartDate').value;
       let rawEndDate = document.getElementById('eventEndDate').value;
@@ -736,18 +744,58 @@
       const startDate = formatToISO(rawStartDate);
       const endDate = rawEndDate ? formatToISO(rawEndDate) : startDate;
 
+      // Si la cuenta está conectada a Microsoft 365, guardar directamente en la nube
+      if (currentUserAccount) {
+        const token = await getAccessToken();
+        if (token) {
+          const isAllDay = !startTime;
+          const startDateTime = isAllDay ? `${startDate}T00:00:00` : `${startDate}T${startTime}:00`;
+          const endDateTime = isAllDay ? `${endDate}T23:59:00` : `${endDate}T${endTime || startTime}:00`;
+
+          const eventPayload = {
+            subject: title,
+            body: {
+              contentType: "HTML",
+              content: desc || "Creado desde CECTAP Dashboard"
+            },
+            start: {
+              dateTime: startDateTime,
+              timeZone: "America/Santiago"
+            },
+            end: {
+              dateTime: endDateTime,
+              timeZone: "America/Santiago"
+            },
+            isAllDay: isAllDay
+          };
+
+          try {
+            await fetch("https://graph.microsoft.com/v1.0/me/events", {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                "Content-Type": "json"
+              },
+              body: JSON.stringify(eventPayload)
+            });
+
+            // Volver a consultar Microsoft Graph para refrescar
+            await syncMicrosoftGraphEvents();
+            closeModal();
+            return;
+          } catch (err) {
+            console.error("Error al crear evento en Microsoft Teams:", err);
+          }
+        }
+      }
+
+      // Guardado local de respaldo si no hay cuenta conectada
       let storedRaw = localStorage.getItem('cectap_events');
       let storedList = storedRaw ? JSON.parse(storedRaw) : [];
 
       if (selectedEventObj) {
         const targetId = selectedEventObj.id;
-        const targetTitle = selectedEventObj.title;
-
-        storedList = storedList.filter(ev => {
-          if (targetId && ev.id === targetId) return false;
-          if (targetTitle && ev.title === targetTitle) return false;
-          return true;
-        });
+        storedList = storedList.filter(ev => ev.id !== targetId);
       }
 
       const newRecord = {
@@ -767,20 +815,35 @@
       refreshCalendarEvents();
     }
 
-    function deleteEvent() {
+    async function deleteEvent() {
       if (!selectedEventObj) return;
 
+      const props = selectedEventObj.extendedProps || {};
+
+      // Eliminar de Microsoft Teams si es un evento sincronizado
+      if (currentUserAccount && props.isMicrosoft && props.rawMsId) {
+        const token = await getAccessToken();
+        if (token) {
+          try {
+            await fetch(`https://graph.microsoft.com/v1.0/me/events/${props.rawMsId}`, {
+              method: "DELETE",
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            await syncMicrosoftGraphEvents();
+            closeModal();
+            return;
+          } catch (err) {
+            console.error("Error al eliminar evento en MS Graph:", err);
+          }
+        }
+      }
+
+      // Eliminar de memoria local
       let storedRaw = localStorage.getItem('cectap_events');
       let storedList = storedRaw ? JSON.parse(storedRaw) : [];
       
       const targetId = selectedEventObj.id;
-      const targetTitle = selectedEventObj.title;
-
-      storedList = storedList.filter(ev => {
-        if (targetId && ev.id === targetId) return false;
-        if (targetTitle && ev.title === targetTitle) return false;
-        return true;
-      });
+      storedList = storedList.filter(ev => ev.id !== targetId);
 
       localStorage.setItem('cectap_events', JSON.stringify(storedList));
       closeModal();
