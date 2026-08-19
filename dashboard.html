@@ -383,13 +383,36 @@
       if (!stored) return [];
       try {
         const parsed = JSON.parse(stored);
-        return parsed.filter(ev => ev && ev.title && ev.start).map(ev => {
-          // Si el evento no abarca múltiples días, eliminamos el campo "end" para evitar estiramiento
-          if (ev.startDate && ev.endDate && ev.startDate === ev.endDate) {
-            delete ev.end;
+        const cleanedEvents = [];
+
+        parsed.forEach(ev => {
+          if (!ev || !ev.title || !ev.start) return;
+
+          // Si el evento no tiene hora o es un solo día, aseguramos su visualización limpia
+          const cleanEv = {
+            id: ev.id || Date.now().toString(),
+            title: ev.title,
+            start: ev.start,
+            allDay: false,
+            display: 'list-item', // Evita que se dibuje como bloque flotante extensible
+            startDate: ev.startDate || ev.start.split('T')[0],
+            endDate: ev.endDate || ev.start.split('T')[0],
+            startTime: ev.startTime || '',
+            endTime: ev.endTime || '',
+            description: ev.description || ''
+          };
+
+          // Solo se adjunta propiedad end si difieren las fechas de inicio y término
+          if (ev.endDate && ev.startDate && ev.endDate !== ev.startDate) {
+            cleanEv.end = ev.end || ev.endDate;
           }
-          return ev;
+
+          cleanedEvents.push(cleanEv);
         });
+
+        // Actualiza el almacenamiento limpio para eliminar rastros corruptos automáticamente
+        localStorage.setItem('cectap_events', JSON.stringify(cleanedEvents));
+        return cleanedEvents;
       } catch (e) {
         return [];
       }
@@ -401,6 +424,7 @@
       calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'es',
+        allDayDefault: false,
         headerToolbar: {
           left: 'prev,next today',
           center: '',
@@ -522,6 +546,8 @@
       let startISO = startDate;
       if (startTime) {
         startISO += 'T' + startTime + ':00';
+      } else {
+        startISO += 'T09:00:00';
       }
 
       let events = getStoredEvents();
@@ -541,6 +567,8 @@
         id: selectedEventObj && selectedEventObj.id ? selectedEventObj.id : Date.now().toString(),
         title: title,
         start: startISO,
+        allDay: false,
+        display: 'list-item',
         startDate: startDate,
         endDate: endDate,
         startTime: startTime,
@@ -548,7 +576,6 @@
         description: desc
       };
 
-      // SOLO agregar "end" a FullCalendar si la fecha de término es mayor a la fecha de inicio
       if (endDate && endDate !== startDate) {
         newEvent.end = endTime ? (endDate + 'T' + endTime + ':00') : endDate;
       }
