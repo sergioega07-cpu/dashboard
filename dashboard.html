@@ -367,12 +367,29 @@
     setInterval(updateClock, 1000);
     updateClock();
 
+    function formatToISO(dateString) {
+      if (!dateString) return '';
+      if (dateString.includes('-')) {
+        const parts = dateString.split('-');
+        if (parts[0].length === 2 && parts[2].length === 4) {
+          return `${parts[2]}-${parts[1]}-${parts[0]}`;
+        }
+      }
+      return dateString;
+    }
+
     function getStoredEvents() {
       const stored = localStorage.getItem('cectap_events');
       if (!stored) return [];
       try {
         const parsed = JSON.parse(stored);
-        return parsed.filter(ev => ev && ev.title && ev.start);
+        return parsed.filter(ev => ev && ev.title && ev.start).map(ev => {
+          // Si el evento no abarca múltiples días, eliminamos el campo "end" para evitar estiramiento
+          if (ev.startDate && ev.endDate && ev.startDate === ev.endDate) {
+            delete ev.end;
+          }
+          return ev;
+        });
       } catch (e) {
         return [];
       }
@@ -486,17 +503,6 @@
       selectedEventObj = null;
     }
 
-    function formatToISO(dateString) {
-      if (!dateString) return '';
-      if (dateString.includes('-')) {
-        const parts = dateString.split('-');
-        if (parts[0].length === 2 && parts[2].length === 4) {
-          return `${parts[2]}-${parts[1]}-${parts[0]}`;
-        }
-      }
-      return dateString;
-    }
-
     function saveEvent() {
       const title = document.getElementById('eventTitle').value.trim();
       const rawStartDate = document.getElementById('eventStartDate').value;
@@ -542,8 +548,9 @@
         description: desc
       };
 
-      if (endTime && endDate) {
-        newEvent.end = endDate + 'T' + endTime + ':00';
+      // SOLO agregar "end" a FullCalendar si la fecha de término es mayor a la fecha de inicio
+      if (endDate && endDate !== startDate) {
+        newEvent.end = endTime ? (endDate + 'T' + endTime + ':00') : endDate;
       }
 
       events.push(newEvent);
