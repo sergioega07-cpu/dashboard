@@ -122,6 +122,7 @@
       font-weight: 700;
     }
 
+    /* Ocultar el título repetido del mes arriba a la izquierda */
     .fc-toolbar-title {
       display: none !important;
     }
@@ -160,6 +161,9 @@
       font-size: 0.85rem !important;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
       cursor: pointer;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
     }
 
     .fc-event-main {
@@ -383,37 +387,44 @@
       if (!stored) return [];
       try {
         const parsed = JSON.parse(stored);
-        const cleanedEvents = [];
+        const validEvents = [];
 
         parsed.forEach(ev => {
-          if (!ev || !ev.title || !ev.start) return;
+          if (!ev || !ev.title || !ev.startDate) return;
 
-          // Si el evento no tiene hora o es un solo día, aseguramos su visualización limpia
-          const cleanEv = {
-            id: ev.id || Date.now().toString(),
-            title: ev.title,
-            start: ev.start,
-            allDay: false,
-            display: 'list-item', // Evita que se dibuje como bloque flotante extensible
-            startDate: ev.startDate || ev.start.split('T')[0],
-            endDate: ev.endDate || ev.start.split('T')[0],
-            startTime: ev.startTime || '',
-            endTime: ev.endTime || '',
-            description: ev.description || ''
-          };
+          // Sanitizar el formato ISO YYYY-MM-DD
+          const cleanDate = formatToISO(ev.startDate);
+          let startISO = cleanDate;
 
-          // Solo se adjunta propiedad end si difieren las fechas de inicio y término
-          if (ev.endDate && ev.startDate && ev.endDate !== ev.startDate) {
-            cleanEv.end = ev.end || ev.endDate;
+          if (ev.startTime) {
+            startISO += 'T' + ev.startTime + ':00';
           }
 
-          cleanedEvents.push(cleanEv);
+          const cleanEvent = {
+            id: ev.id || Date.now().toString(),
+            title: ev.title,
+            start: startISO,
+            allDay: !ev.startTime,
+            extendedProps: {
+              startDate: cleanDate,
+              endDate: ev.endDate ? formatToISO(ev.endDate) : cleanDate,
+              startTime: ev.startTime || '',
+              endTime: ev.endTime || '',
+              description: ev.description || ''
+            }
+          };
+
+          // Solo pasamos fecha fin si abarca múltiples días distintos
+          if (ev.endDate && formatToISO(ev.endDate) !== cleanDate) {
+            cleanEvent.end = formatToISO(ev.endDate) + (ev.endTime ? ('T' + ev.endTime + ':00') : '');
+          }
+
+          validEvents.push(cleanEvent);
         });
 
-        // Actualiza el almacenamiento limpio para eliminar rastros corruptos automáticamente
-        localStorage.setItem('cectap_events', JSON.stringify(cleanedEvents));
-        return cleanedEvents;
+        return validEvents;
       } catch (e) {
+        localStorage.removeItem('cectap_events');
         return [];
       }
     }
@@ -424,15 +435,12 @@
       calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'es',
-        allDayDefault: false,
         headerToolbar: {
           left: 'prev,next today',
           center: '',
           right: ''
         },
-        events: function(fetchInfo, successCallback, failureCallback) {
-          successCallback(getStoredEvents());
-        },
+        events: getStoredEvents(),
         dateClick: function(info) {
           openModalForCreate(info.dateStr);
         },
@@ -510,11 +518,10 @@
 
       const props = fcEvent.extendedProps || {};
       const startDateStr = fcEvent.startStr ? fcEvent.startStr.split('T')[0] : '';
-      const endDateStr = fcEvent.endStr ? fcEvent.endStr.split('T')[0] : startDateStr;
 
       document.getElementById('eventTitle').value = fcEvent.title || '';
       document.getElementById('eventStartDate').value = props.startDate || startDateStr;
-      document.getElementById('eventEndDate').value = props.endDate || endDateStr;
+      document.getElementById('eventEndDate').value = props.endDate || startDateStr;
       document.getElementById('eventStartTime').value = props.startTime || '';
       document.getElementById('eventEndTime').value = props.endTime || '';
       document.getElementById('eventDesc').value = props.description || '';
@@ -543,32 +550,23 @@
       const startDate = formatToISO(rawStartDate);
       const endDate = rawEndDate ? formatToISO(rawEndDate) : startDate;
 
-      let startISO = startDate;
-      if (startTime) {
-        startISO += 'T' + startTime + ':00';
-      } else {
-        startISO += 'T09:00:00';
-      }
-
-      let events = getStoredEvents();
+      let storedRaw = localStorage.getItem('cectap_events');
+      let storedList = storedRaw ? JSON.parse(storedRaw) : [];
 
       if (selectedEventObj) {
         const targetId = selectedEventObj.id;
         const targetTitle = selectedEventObj.title;
 
-        events = events.filter(ev => {
+        storedList = storedList.filter(ev => {
           if (targetId && ev.id === targetId) return false;
           if (targetTitle && ev.title === targetTitle) return false;
           return true;
         });
       }
 
-      const newEvent = {
+      const newRecord = {
         id: selectedEventObj && selectedEventObj.id ? selectedEventObj.id : Date.now().toString(),
         title: title,
-        start: startISO,
-        allDay: false,
-        display: 'list-item',
         startDate: startDate,
         endDate: endDate,
         startTime: startTime,
@@ -576,33 +574,36 @@
         description: desc
       };
 
-      if (endDate && endDate !== startDate) {
-        newEvent.end = endTime ? (endDate + 'T' + endTime + ':00') : endDate;
-      }
+      storedList.push(newRecord);
+      localStorage.setItem('cectap_events', JSON.stringify(storedList));
 
-      events.push(newEvent);
-
-      localStorage.setItem('cectap_events', JSON.stringify(events));
       closeModal();
-      calendar.refetchEvents();
+      
+      // Recargar eventos de forma limpia desde la estructura verificada
+      calendar.removeAllEvents();
+      getStoredEvents().forEach(ev => calendar.addEvent(ev));
     }
 
     function deleteEvent() {
       if (!selectedEventObj) return;
 
-      let events = getStoredEvents();
+      let storedRaw = localStorage.getItem('cectap_events');
+      let storedList = storedRaw ? JSON.parse(storedRaw) : [];
+      
       const targetId = selectedEventObj.id;
       const targetTitle = selectedEventObj.title;
 
-      events = events.filter(ev => {
+      storedList = storedList.filter(ev => {
         if (targetId && ev.id === targetId) return false;
         if (targetTitle && ev.title === targetTitle) return false;
         return true;
       });
 
-      localStorage.setItem('cectap_events', JSON.stringify(events));
+      localStorage.setItem('cectap_events', JSON.stringify(storedList));
       closeModal();
-      calendar.refetchEvents();
+
+      calendar.removeAllEvents();
+      getStoredEvents().forEach(ev => calendar.addEvent(ev));
     }
   </script>
 </body>
