@@ -151,7 +151,6 @@
       color: #ffffff;
     }
 
-    /* Modificación de Tarjetas de Eventos / Recordatorios */
     .fc-event {
       background: rgba(15, 23, 42, 0.95) !important;
       border: 1px solid rgba(59, 130, 246, 0.8) !important;
@@ -161,6 +160,7 @@
       padding: 4px 8px !important;
       font-size: 0.85rem !important;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6) !important;
+      cursor: pointer;
     }
 
     .fc-event-main {
@@ -203,7 +203,7 @@
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 16px;
       padding: 24px;
-      width: 400px;
+      width: 440px;
       box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
     }
 
@@ -216,6 +216,15 @@
 
     .form-group {
       margin-bottom: 14px;
+    }
+
+    .form-row {
+      display: flex;
+      gap: 12px;
+    }
+
+    .flex-1 {
+      flex: 1;
     }
 
     .form-group label {
@@ -237,9 +246,14 @@
 
     .modal-actions {
       display: flex;
-      justify-content: flex-end;
-      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
       margin-top: 20px;
+    }
+
+    .modal-actions-right {
+      display: flex;
+      gap: 10px;
     }
 
     .btn {
@@ -258,6 +272,11 @@
 
     .btn-primary {
       background: #2563eb;
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: #dc2626;
       color: #fff;
     }
 
@@ -292,16 +311,33 @@
 
   <div id="eventModal" class="modal-overlay">
     <div class="modal-content">
-      <div class="modal-header">Nueva Actividad CECTAP</div>
+      <div id="modalHeader" class="modal-header">Nueva Actividad CECTAP</div>
       
       <div class="form-group">
         <label for="eventTitle">Título de la Actividad</label>
         <input type="text" id="eventTitle" placeholder="Ej: Reunión de Coordinación">
       </div>
 
-      <div class="form-group">
-        <label for="eventDate">Fecha</label>
-        <input type="date" id="eventDate">
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="eventStartDate">Fecha Inicio</label>
+          <input type="date" id="eventStartDate">
+        </div>
+        <div class="form-group flex-1">
+          <label for="eventStartTime">Hora Inicio</label>
+          <input type="time" id="eventStartTime">
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label for="eventEndDate">Fecha Término</label>
+          <input type="date" id="eventEndDate">
+        </div>
+        <div class="form-group flex-1">
+          <label for="eventEndTime">Hora Término</label>
+          <input type="time" id="eventEndTime">
+        </div>
       </div>
 
       <div class="form-group">
@@ -310,14 +346,18 @@
       </div>
 
       <div class="modal-actions">
-        <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
-        <button id="btnSaveEvent" class="btn btn-primary" onclick="saveEvent()">Guardar Actividad</button>
+        <button id="btnDeleteEvent" class="btn btn-danger" onclick="deleteEvent()" style="display: none;">Borrar</button>
+        <div class="modal-actions-right">
+          <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+          <button id="btnSaveEvent" class="btn btn-primary" onclick="saveEvent()">Guardar</button>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     let calendar;
+    let editingEventId = null;
 
     function updateClock() {
       const now = new Date();
@@ -348,7 +388,10 @@
           successCallback(getStoredEvents());
         },
         dateClick: function(info) {
-          openModal(info.dateStr);
+          openModalForCreate(info.dateStr);
+        },
+        eventClick: function(info) {
+          openModalForEdit(info.event);
         }
       });
 
@@ -399,10 +442,34 @@
       toolbarRight.appendChild(selectorsContainer);
     }
 
-    function openModal(dateStr) {
-      document.getElementById('eventDate').value = dateStr;
+    function openModalForCreate(dateStr) {
+      editingEventId = null;
+      document.getElementById('modalHeader').innerText = 'Nueva Actividad CECTAP';
+      document.getElementById('btnDeleteEvent').style.display = 'none';
+
       document.getElementById('eventTitle').value = '';
+      document.getElementById('eventStartDate').value = dateStr;
+      document.getElementById('eventEndDate').value = dateStr;
+      document.getElementById('eventStartTime').value = '09:00';
+      document.getElementById('eventEndTime').value = '10:00';
       document.getElementById('eventDesc').value = '';
+
+      document.getElementById('eventModal').style.display = 'flex';
+    }
+
+    function openModalForEdit(fcEvent) {
+      editingEventId = fcEvent.id;
+      document.getElementById('modalHeader').innerText = 'Editar Actividad CECTAP';
+      document.getElementById('btnDeleteEvent').style.display = 'block';
+
+      const props = fcEvent.extendedProps || {};
+      document.getElementById('eventTitle').value = fcEvent.title || '';
+      document.getElementById('eventStartDate').value = props.startDate || fcEvent.startStr.split('T')[0];
+      document.getElementById('eventEndDate').value = props.endDate || (fcEvent.endStr ? fcEvent.endStr.split('T')[0] : props.startDate);
+      document.getElementById('eventStartTime').value = props.startTime || '';
+      document.getElementById('eventEndTime').value = props.endTime || '';
+      document.getElementById('eventDesc').value = props.description || '';
+
       document.getElementById('eventModal').style.display = 'flex';
     }
 
@@ -412,25 +479,71 @@
 
     function saveEvent() {
       const title = document.getElementById('eventTitle').value;
-      const date = document.getElementById('eventDate').value;
+      const startDate = document.getElementById('eventStartDate').value;
+      const endDate = document.getElementById('eventEndDate').value || startDate;
+      const startTime = document.getElementById('eventStartTime').value;
+      const endTime = document.getElementById('eventEndTime').value;
       const desc = document.getElementById('eventDesc').value;
 
-      if (!title) {
-        alert('Por favor ingrese un título para la actividad');
+      if (!title || !startDate) {
+        alert('Por favor ingrese al menos el título y la fecha de inicio.');
         return;
       }
 
-      const events = getStoredEvents();
-      events.push({
-        title: title,
-        start: date,
-        description: desc
-      });
+      let startISO = startDate;
+      if (startTime) startISO += 'T' + startTime;
+
+      let endISO = endDate;
+      if (endTime) endISO += 'T' + endTime;
+
+      let events = getStoredEvents();
+
+      if (editingEventId) {
+        events = events.map(ev => {
+          if (ev.id === editingEventId) {
+            return {
+              id: editingEventId,
+              title: title,
+              start: startISO,
+              end: endISO,
+              startDate: startDate,
+              endDate: endDate,
+              startTime: startTime,
+              endTime: endTime,
+              description: desc
+            };
+          }
+          return ev;
+        });
+      } else {
+        events.push({
+          id: Date.now().toString(),
+          title: title,
+          start: startISO,
+          end: endISO,
+          startDate: startDate,
+          endDate: endDate,
+          startTime: startTime,
+          endTime: endTime,
+          description: desc
+        });
+      }
 
       localStorage.setItem('cectap_events', JSON.stringify(events));
-
       closeModal();
       calendar.refetchEvents();
+    }
+
+    function deleteEvent() {
+      if (!editingEventId) return;
+
+      if (confirm('¿Está seguro de que desea borrar esta actividad?')) {
+        let events = getStoredEvents();
+        events = events.filter(ev => ev.id !== editingEventId);
+        localStorage.setItem('cectap_events', JSON.stringify(events));
+        closeModal();
+        calendar.refetchEvents();
+      }
     }
   </script>
 </body>
