@@ -47,7 +47,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(15, 23, 42, 0.1);
+      background: rgba(15, 23, 42, 0.05);
       z-index: -1;
     }
 
@@ -55,14 +55,14 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 16px;
       padding: 12px 24px;
       margin-bottom: 15px;
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.25);
     }
 
     .weather-widget {
@@ -70,7 +70,7 @@
       align-items: center;
       gap: 12px;
       font-size: 0.95rem;
-      background: rgba(0, 0, 0, 0.25);
+      background: rgba(0, 0, 0, 0.2);
       padding: 8px 16px;
       border-radius: 12px;
     }
@@ -84,25 +84,27 @@
       font-weight: 700;
       letter-spacing: 1px;
       color: #f8fafc;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.5);
     }
 
     .clock-date {
       font-size: 0.85rem;
       color: #cbd5e1;
       text-transform: capitalize;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.5);
     }
 
     .main-container {
       flex: 1;
-      background: rgba(15, 23, 42, 0.25);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: 20px;
       padding: 20px;
       display: flex;
       flex-direction: column;
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
     }
 
     #calendar {
@@ -114,28 +116,38 @@
       color: #f8fafc;
     }
     .fc-theme-standard td, .fc-theme-standard th {
-      border-color: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.2);
+      background: rgba(15, 23, 42, 0.1);
+    }
+    .fc-theme-standard th {
+      background: rgba(15, 23, 42, 0.3);
+      text-shadow: 0 1px 2px rgba(0,0,0,0.6);
     }
     .fc-toolbar-title {
       font-size: 1.5rem !important;
       font-weight: 600;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.6);
     }
     .fc-button-primary {
-      background-color: rgba(255, 255, 255, 0.12) !important;
-      border: 1px solid rgba(255, 255, 255, 0.25) !important;
+      background-color: rgba(255, 255, 255, 0.15) !important;
+      border: 1px solid rgba(255, 255, 255, 0.3) !important;
       color: #fff !important;
       border-radius: 8px !important;
       transition: all 0.2s;
     }
     .fc-button-primary:hover {
-      background-color: rgba(255, 255, 255, 0.25) !important;
+      background-color: rgba(255, 255, 255, 0.3) !important;
     }
     .fc-daygrid-day {
       cursor: pointer;
       transition: background 0.2s;
     }
     .fc-daygrid-day:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.15);
+    }
+    .fc-daygrid-day-number {
+      text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+      font-weight: 600;
     }
     .fc-event {
       background: #2563eb !important;
@@ -152,9 +164,9 @@
     }
 
     .custom-select {
-      background: rgba(15, 23, 42, 0.85);
+      background: rgba(15, 23, 42, 0.6);
       color: white;
-      border: 1px solid rgba(255, 255, 255, 0.25);
+      border: 1px solid rgba(255, 255, 255, 0.3);
       padding: 6px 12px;
       border-radius: 8px;
       outline: none;
