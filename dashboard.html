@@ -5,9 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard CECTAP</title>
 
+  <!-- FullCalendar CSS y JS -->
   <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet" />
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/locales/es.js"></script>
+
+  <!-- Microsoft Authentication Library (MSAL.js v2) -->
+  <script src="https://alcdn.msauth.net/browser/2.38.0/js/msal-browser.min.js"></script>
 
   <style>
     * {
@@ -61,6 +65,12 @@
       padding: 12px 24px;
       margin-bottom: 15px;
       box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+    }
+
+    .top-bar-center {
+      display: flex;
+      align-items: center;
+      gap: 15px;
     }
 
     .weather-widget {
@@ -122,7 +132,6 @@
       font-weight: 700;
     }
 
-    /* Ocultar el título repetido del mes arriba a la izquierda */
     .fc-toolbar-title {
       display: none !important;
     }
@@ -283,7 +292,20 @@
       color: #fff;
     }
 
-    .btn:hover {
+    .btn-ms {
+      background: rgba(37, 99, 235, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover, .btn-ms:hover {
       opacity: 0.9;
     }
   </style>
@@ -300,6 +322,12 @@
         <div id="weatherTemp" style="font-weight: 600;">18°C</div>
         <div id="weatherDesc" style="font-size: 0.75rem; color: #cbd5e1;">Santiago</div>
       </div>
+    </div>
+
+    <div class="top-bar-center">
+      <button id="btnMsAuth" class="btn-ms" onclick="toggleMicrosoftLogin()">
+        <span>🔑</span> <span id="msAuthText">Conectar Teams / 365</span>
+      </button>
     </div>
 
     <div class="clock-widget">
@@ -359,6 +387,26 @@
   </div>
 
   <script>
+    // Configuración Microsoft Authentication Library (MSAL)
+    const msalConfig = {
+      auth: {
+        clientId: "bc9f2a64-1ced-41c0-9873-bf4661b43fd9",
+        authority: "https://login.microsoftonline.com/aac1470e-7fb9-4bf7-9ed8-caeaaa86d43f",
+        redirectUri: "https://sergioega07-cpu.github.io/dashboard/dashboard.html"
+      },
+      cache: {
+        cacheLocation: "localStorage",
+        storeAuthStateInCookie: false
+      }
+    };
+
+    const loginRequest = {
+      scopes: ["User.Read", "Calendars.ReadWrite"]
+    };
+
+    const msalInstance = new msal.PublicClientApplication(msalConfig);
+    let currentUserAccount = null;
+
     let calendar;
     let selectedEventObj = null;
 
@@ -382,6 +430,85 @@
       return dateString;
     }
 
+    // Inicializar autenticación Microsoft
+    async function initMicrosoftAuth() {
+      try {
+        const accounts = msalInstance.getAllAccounts();
+        if (accounts.length > 0) {
+          currentUserAccount = accounts[0];
+          document.getElementById('msAuthText').innerText = currentUserAccount.username.split('@')[0];
+          await syncMicrosoftGraphEvents();
+        }
+      } catch (err) {
+        console.error("Error al verificar sesion MSAL:", err);
+      }
+    }
+
+    async function toggleMicrosoftLogin() {
+      if (currentUserAccount) {
+        await msalInstance.logoutPopup();
+        currentUserAccount = null;
+        document.getElementById('msAuthText').innerText = "Conectar Teams / 365";
+        refreshCalendarEvents();
+      } else {
+        try {
+          const loginResponse = await msalInstance.loginPopup(loginRequest);
+          currentUserAccount = loginResponse.account;
+          document.getElementById('msAuthText').innerText = currentUserAccount.username.split('@')[0];
+          await syncMicrosoftGraphEvents();
+        } catch (err) {
+          console.error("Error durante login:", err);
+        }
+      }
+    }
+
+    async function getAccessToken() {
+      if (!currentUserAccount) return null;
+      try {
+        const response = await msalInstance.acquireTokenSilent({
+          ...loginRequest,
+          account: currentUserAccount
+        });
+        return response.accessToken;
+      } catch (err) {
+        const response = await msalInstance.acquireTokenPopup(loginRequest);
+        return response.accessToken;
+      }
+    }
+
+    async function syncMicrosoftGraphEvents() {
+      const token = await getAccessToken();
+      if (!token) return;
+
+      try {
+        const response = await fetch("https://graph.microsoft.com/v1.0/me/events?$top=100&$select=id,subject,bodyPreview,start,end,isAllDay", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        const data = await response.json();
+        if (data.value) {
+          const msEvents = data.value.map(ev => ({
+            id: 'ms_' + ev.id,
+            title: ev.subject,
+            startDate: ev.start.dateTime.split('T')[0],
+            endDate: ev.end.dateTime.split('T')[0],
+            startTime: ev.isAllDay ? '' : ev.start.dateTime.split('T')[1].substring(0,5),
+            endTime: ev.isAllDay ? '' : ev.end.dateTime.split('T')[1].substring(0,5),
+            description: ev.bodyPreview || 'Evento sincronizado de Teams/Outlook',
+            isMicrosoft: true
+          }));
+
+          // Unir eventos locales y eventos de Microsoft
+          let localRaw = localStorage.getItem('cectap_events');
+          let localList = localRaw ? JSON.parse(localRaw).filter(e => !e.isMicrosoft) : [];
+          const combined = [...localList, ...msEvents];
+          localStorage.setItem('cectap_events', JSON.stringify(combined));
+          refreshCalendarEvents();
+        }
+      } catch (err) {
+        console.error("Error al obtener eventos de MS Graph:", err);
+      }
+    }
+
     function getStoredEvents() {
       const stored = localStorage.getItem('cectap_events');
       if (!stored) return [];
@@ -392,7 +519,6 @@
         parsed.forEach(ev => {
           if (!ev || !ev.title || !ev.startDate) return;
 
-          // Sanitizar el formato ISO YYYY-MM-DD
           const cleanDate = formatToISO(ev.startDate);
           let startISO = cleanDate;
 
@@ -410,11 +536,11 @@
               endDate: ev.endDate ? formatToISO(ev.endDate) : cleanDate,
               startTime: ev.startTime || '',
               endTime: ev.endTime || '',
-              description: ev.description || ''
+              description: ev.description || '',
+              isMicrosoft: ev.isMicrosoft || false
             }
           };
 
-          // Solo pasamos fecha fin si abarca múltiples días distintos
           if (ev.endDate && formatToISO(ev.endDate) !== cleanDate) {
             cleanEvent.end = formatToISO(ev.endDate) + (ev.endTime ? ('T' + ev.endTime + ':00') : '');
           }
@@ -424,9 +550,13 @@
 
         return validEvents;
       } catch (e) {
-        localStorage.removeItem('cectap_events');
         return [];
       }
+    }
+
+    function refreshCalendarEvents() {
+      calendar.removeAllEvents();
+      getStoredEvents().forEach(ev => calendar.addEvent(ev));
     }
 
     document.addEventListener('DOMContentLoaded', function() {
@@ -451,6 +581,7 @@
 
       calendar.render();
       injectCustomSelectors();
+      initMicrosoftAuth();
     });
 
     function injectCustomSelectors() {
@@ -578,10 +709,7 @@
       localStorage.setItem('cectap_events', JSON.stringify(storedList));
 
       closeModal();
-      
-      // Recargar eventos de forma limpia desde la estructura verificada
-      calendar.removeAllEvents();
-      getStoredEvents().forEach(ev => calendar.addEvent(ev));
+      refreshCalendarEvents();
     }
 
     function deleteEvent() {
@@ -601,9 +729,7 @@
 
       localStorage.setItem('cectap_events', JSON.stringify(storedList));
       closeModal();
-
-      calendar.removeAllEvents();
-      getStoredEvents().forEach(ev => calendar.addEvent(ev));
+      refreshCalendarEvents();
     }
   </script>
 </body>
