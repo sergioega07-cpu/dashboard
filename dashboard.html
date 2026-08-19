@@ -70,7 +70,7 @@
     .top-bar-center {
       display: flex;
       align-items: center;
-      gap: 15px;
+      gap: 12px;
     }
 
     .weather-widget {
@@ -305,7 +305,20 @@
       gap: 8px;
     }
 
-    .btn:hover, .btn-ms:hover {
+    .btn-fs {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: white;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover, .btn-ms:hover, .btn-fs:hover {
       opacity: 0.9;
     }
   </style>
@@ -327,6 +340,9 @@
     <div class="top-bar-center">
       <button id="btnMsAuth" class="btn-ms" onclick="toggleMicrosoftLogin()">
         <span>🔑</span> <span id="msAuthText">Conectar Teams / 365</span>
+      </button>
+      <button id="btnFullscreen" class="btn-fs" onclick="toggleFullscreen()">
+        <span>⛶</span> <span id="fsText">Pantalla Completa</span>
       </button>
     </div>
 
@@ -430,6 +446,30 @@
       return dateString;
     }
 
+    // Función para activar / desactivar pantalla completa
+    function toggleFullscreen() {
+      const doc = document.documentElement;
+      if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+        if (doc.requestFullscreen) {
+          doc.requestFullscreen();
+        } else if (doc.webkitRequestFullscreen) {
+          doc.webkitRequestFullscreen();
+        } else if (doc.msRequestFullscreen) {
+          doc.msRequestFullscreen();
+        }
+        document.getElementById('fsText').innerText = "Salir Completa";
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        } else if (document.webkitExitFullscreen) {
+          document.webkitExitFullscreen();
+        } else if (document.msExitFullscreen) {
+          document.msExitFullscreen();
+        }
+        document.getElementById('fsText').innerText = "Pantalla Completa";
+      }
+    }
+
     // Inicializar autenticación Microsoft
     async function initMicrosoftAuth() {
       try {
@@ -497,7 +537,6 @@
             isMicrosoft: true
           }));
 
-          // Unir eventos locales y eventos de Microsoft
           let localRaw = localStorage.getItem('cectap_events');
           let localList = localRaw ? JSON.parse(localRaw).filter(e => !e.isMicrosoft) : [];
           const combined = [...localList, ...msEvents];
