@@ -78,7 +78,6 @@
       gap: 10px;
     }
 
-    /* Widget de Clima Persistente de 5 Días */
     .weather-container {
       display: flex;
       align-items: center;
@@ -481,7 +480,6 @@
     let calendar;
     let selectedEventObj = null;
 
-    // Coordenadas fijas de La Reina, Santiago
     const lat = -33.4439;
     const lon = -70.5369;
 
@@ -612,12 +610,20 @@
       }
     }
 
+    // Consulta extendida mediante calendarView para capturar eventos recurrentes y únicos
     async function syncMicrosoftGraphEvents() {
       const token = await getAccessToken();
       if (!token) return;
 
       try {
-        const response = await fetch("https://graph.microsoft.com/v1.0/me/events?$top=100&$select=id,subject,bodyPreview,start,end,isAllDay", {
+        // Calcular inicio y fin de ventana de tiempo (30 días atrás y 60 días adelante)
+        const now = new Date();
+        const startWindow = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
+        const endWindow = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
+
+        const apiUrl = `https://graph.microsoft.com/v1.0/me/calendarView?startDateTime=${startWindow}&endDateTime=${endWindow}&$top=200&$select=id,subject,bodyPreview,start,end,isAllDay`;
+
+        const response = await fetch(apiUrl, {
           headers: { 
             Authorization: `Bearer ${token}`,
             Prefer: 'outlook.timezone="America/Santiago"'
@@ -736,6 +742,11 @@
         },
         eventClick: function(info) {
           openModalForEdit(info.event);
+        },
+        datesSet: function() {
+          if (currentUserAccount) {
+            syncMicrosoftGraphEvents();
+          }
         }
       });
 
