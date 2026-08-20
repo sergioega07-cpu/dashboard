@@ -30,7 +30,7 @@
       color: #ffffff;
       display: flex;
       flex-direction: column;
-      padding: 12px;
+      padding: 10px;
       position: relative;
       background-color: #0f172a;
     }
@@ -62,36 +62,70 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: rgba(15, 23, 42, 0.4);
+      background: rgba(15, 23, 42, 0.45);
       border: 1px solid rgba(255, 255, 255, 0.3);
       border-radius: 12px;
-      padding: 8px 18px;
-      margin-bottom: 10px;
+      padding: 6px 14px;
+      margin-bottom: 8px;
       box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
       flex-shrink: 0;
+      gap: 10px;
     }
 
     .top-bar-center {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
-    .weather-widget {
+    /* Widget de Clima Persistente de 5 Días */
+    .weather-container {
       display: flex;
       align-items: center;
-      gap: 10px;
-      font-size: 0.85rem;
-      background: rgba(0, 0, 0, 0.4);
-      padding: 6px 12px;
+      gap: 12px;
+      background: rgba(0, 0, 0, 0.45);
+      padding: 4px 10px;
       border-radius: 10px;
-      text-shadow: 0 2px 4px rgba(0,0,0,0.9);
-      cursor: pointer;
-      transition: background 0.2s;
+      border: 1px solid rgba(255, 255, 255, 0.15);
     }
 
-    .weather-widget:hover {
-      background: rgba(0, 0, 0, 0.6);
+    .weather-current {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      border-right: 1px solid rgba(255, 255, 255, 0.2);
+      padding-right: 10px;
+    }
+
+    .forecast-inline {
+      display: flex;
+      gap: 8px;
+    }
+
+    .forecast-day {
+      text-align: center;
+      font-size: 0.7rem;
+      background: rgba(15, 23, 42, 0.5);
+      padding: 3px 6px;
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .forecast-day .day-name {
+      color: #94a3b8;
+      text-transform: capitalize;
+      font-size: 0.65rem;
+    }
+
+    .forecast-day .temp {
+      font-weight: 700;
+      color: #ffffff;
+    }
+
+    .forecast-day .uv {
+      color: #facc15;
+      font-size: 0.6rem;
     }
 
     .clock-widget {
@@ -99,7 +133,7 @@
     }
 
     .clock-time {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       font-weight: 700;
       letter-spacing: 1px;
       color: #ffffff;
@@ -107,7 +141,7 @@
     }
 
     .clock-date {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       color: #f1f5f9;
       text-transform: capitalize;
       text-shadow: 0 2px 4px rgba(0,0,0,0.9);
@@ -118,7 +152,7 @@
       background: rgba(15, 23, 42, 0.2);
       border: 1px solid rgba(255, 255, 255, 0.3);
       border-radius: 16px;
-      padding: 10px;
+      padding: 8px;
       display: flex;
       flex-direction: column;
       box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
@@ -150,7 +184,7 @@
     }
 
     .fc-toolbar {
-      margin-bottom: 8px !important;
+      margin-bottom: 6px !important;
     }
 
     .fc-button-primary {
@@ -334,37 +368,8 @@
       gap: 6px;
     }
 
-    /* Modal de Clima */
-    .forecast-grid {
-      display: flex;
-      gap: 8px;
-      margin-top: 15px;
-    }
-
-    .forecast-card {
-      flex: 1;
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 10px;
-      padding: 10px 6px;
-      text-align: center;
-    }
-
-    .forecast-date {
-      font-size: 0.75rem;
-      color: #94a3b8;
-      text-transform: capitalize;
-    }
-
-    .forecast-temp {
-      font-size: 0.9rem;
-      font-weight: 700;
-      margin: 4px 0;
-    }
-
-    .forecast-uv {
-      font-size: 0.7rem;
-      color: #facc15;
+    .btn:hover, .btn-ms:hover, .btn-fs:hover {
+      opacity: 0.9;
     }
   </style>
 </head>
@@ -374,11 +379,16 @@
   <div class="bg-overlay"></div>
 
   <div class="top-bar">
-    <div class="weather-widget" onclick="openWeatherModal()">
-      <span id="weatherIcon">☀️</span>
-      <div>
-        <div id="weatherTemp" style="font-weight: 600;">--°C</div>
-        <div id="weatherDesc" style="font-size: 0.7rem; color: #cbd5e1;">Cargando...</div>
+    <div class="weather-container">
+      <div class="weather-current">
+        <span>☀️</span>
+        <div>
+          <div id="weatherTemp" style="font-weight: 700;">--°C</div>
+          <div id="weatherDesc" style="font-size: 0.65rem; color: #cbd5e1;">La Reina</div>
+        </div>
+      </div>
+      <div id="forecastInline" class="forecast-inline">
+        <span style="font-size: 0.75rem; color: #cbd5e1;">Cargando pronóstico...</span>
       </div>
     </div>
 
@@ -448,24 +458,6 @@
     </div>
   </div>
 
-  <!-- Modal del Pronóstico del Tiempo (5 Días) -->
-  <div id="weatherModal" class="modal-overlay">
-    <div class="modal-content" style="width: 520px;">
-      <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
-        <span>Pronóstico del Tiempo (5 Días)</span>
-        <span id="weatherLocation" style="font-size: 0.85rem; color: #38bdf8;">La Reina, Santiago</span>
-      </div>
-      
-      <div id="weatherModalBody">
-        <p style="font-size: 0.9rem; color: #cbd5e1;">Cargando datos meteorológicos de la zona...</p>
-      </div>
-
-      <div class="modal-actions" style="justify-content: flex-end; margin-top: 15px;">
-        <button class="btn btn-secondary" onclick="closeWeatherModal()">Cerrar</button>
-      </div>
-    </div>
-  </div>
-
   <script>
     const msalConfig = {
       auth: {
@@ -489,9 +481,9 @@
     let calendar;
     let selectedEventObj = null;
 
-    // Coordenadas fijas por defecto para La Reina, Santiago
-    let lat = -33.4439;
-    let lon = -70.5369;
+    // Coordenadas fijas de La Reina, Santiago
+    const lat = -33.4439;
+    const lon = -70.5369;
 
     function updateClock() {
       const now = new Date();
@@ -502,71 +494,41 @@
     setInterval(updateClock, 1000);
     updateClock();
 
-    // Obtener clima en tiempo real desde Open-Meteo
     async function fetchWeatherData() {
       try {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(pos => {
-            lat = pos.coords.latitude;
-            lon = pos.coords.longitude;
-            loadWeatherFromApi();
-          }, () => {
-            loadWeatherFromApi();
-          });
-        } else {
-          loadWeatherFromApi();
-        }
-      } catch (e) {
-        loadWeatherFromApi();
-      }
-    }
-
-    async function loadWeatherFromApi() {
-      try {
-        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,uv_index,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,uv_index_max&timezone=America%2FSantiago`;
+        const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,uv_index&daily=temperature_2m_max,temperature_2m_min,uv_index_max&timezone=America%2FSantiago`;
         const res = await fetch(url);
         const data = await res.json();
 
         if (data && data.current) {
           const currentTemp = Math.round(data.current.temperature_2m);
-          const currentUV = data.current.uv_index;
-          
-          document.getElementById('weatherTemp').innerText = `${currentTemp}°C`;
-          document.getElementById('weatherDesc').innerText = `UV: ${currentUV.toFixed(1)} | La Reina`;
+          const currentUV = data.current.uv_index.toFixed(1);
 
-          // Generar vista HTML de los 5 días
-          let html = `<div class="forecast-grid">`;
+          document.getElementById('weatherTemp').innerText = `${currentTemp}°C`;
+          document.getElementById('weatherDesc').innerText = `UV ${currentUV} | La Reina`;
+
+          let html = '';
           for (let i = 0; i < 5; i++) {
             const dateStr = data.daily.time[i];
             const dateObj = new Date(dateStr + 'T00:00:00');
-            const dayName = dateObj.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric' });
+            const dayName = dateObj.toLocaleDateString('es-CL', { weekday: 'short' }).replace('.', '');
             const maxT = Math.round(data.daily.temperature_2m_max[i]);
             const minT = Math.round(data.daily.temperature_2m_min[i]);
             const maxUV = data.daily.uv_index_max[i].toFixed(1);
 
             html += `
-              <div class="forecast-card">
-                <div class="forecast-date">${dayName}</div>
-                <div style="font-size: 1.2rem; margin: 4px 0;">☀️</div>
-                <div class="forecast-temp">${maxT}° / ${minT}°C</div>
-                <div class="forecast-uv">UV: ${maxUV}</div>
+              <div class="forecast-day">
+                <div class="day-name">${dayName}</div>
+                <div class="temp">${maxT}° / ${minT}°</div>
+                <div class="uv">UV ${maxUV}</div>
               </div>
             `;
           }
-          html += `</div>`;
-          document.getElementById('weatherModalBody').innerHTML = html;
+          document.getElementById('forecastInline').innerHTML = html;
         }
       } catch (e) {
         console.error("Error al cargar clima:", e);
       }
-    }
-
-    function openWeatherModal() {
-      document.getElementById('weatherModal').style.display = 'flex';
-    }
-
-    function closeWeatherModal() {
-      document.getElementById('weatherModal').style.display = 'none';
     }
 
     function formatToISO(dateString) {
@@ -650,7 +612,6 @@
       }
     }
 
-    // Sincronización con corrección de zona horaria local (Chile America/Santiago)
     async function syncMicrosoftGraphEvents() {
       const token = await getAccessToken();
       if (!token) return;
